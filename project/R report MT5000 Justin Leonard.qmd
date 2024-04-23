@@ -1,0 +1,152 @@
+---
+title: "R report MT5000 Justin Leonard"
+subtitle: "The analysis of the evolution of ACT distribution"
+author: "Justin Leonard"
+date: "2024-04-25"
+format: 
+  html: 
+    theme: yeti
+    backgroundcolor: black
+    fontcolor: white
+    toc: true
+execute: 
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+# libraries
+library(tidyverse)
+library(plotly)
+
+# Data
+unicef_indicator_2 <- read_csv("unicef_indicator_2.csv")
+unicef_metadata <- read_csv("unicef_metadata.csv")
+
+
+# transformations
+data_join <- unicef_indicator_2 %>%
+  full_join(unicef_metadata)
+
+```
+## Introduction
+This compilation of visualisations looks at the **evolution of the distribution of ACT to febrile children (under the age of 5)** both male and female, ACT is a first line anti malarial drug. 
+
+- The first visualisation shows *the spread of the distribution of ACT across the world map*. 
+- The second visualisation allows us to see *the evolution of life expectancy across the world*. 
+- Thirdly we see the *relationship of ACT distribution and GDP per capita*. 
+- Finally, the bar chart gives us *an insight into the comparison of distribution to males and females*.
+
+
+## World Map
+
+```{r}
+#| fig-cap: "The following world map shows the countries where ACT is being distributed. The distribution of ACT map shows us that the countries that are most affected by Malaria are in Africa prodominently and Asia. ***These countries are also notably devloping countries***."
+
+map_world <- map_data("world")  
+
+map_data_join <- full_join(unicef_indicator_2, map_world, by = c ("country" = "region"))
+
+ggplot(map_data_join)+
+  aes(x = long, y = lat, group = group, fill = indicator)+
+  geom_polygon()+
+  scale_fill_discrete()+
+  labs(title = "The spread of ACT distribution across the world map",
+       subtitle = "Countries in black are not distributing the drug",
+       x = "longitude",
+       y = "latitude",
+       fill = "ACT distribution")+
+  theme_classic()+
+theme(text = element_text(family = "serif"))
+
+options(scipen = 999)
+```
+
+## Time series chart
+
+```{r}
+#| fig-cap: "This visualisation of the time-series chart allows us to see how life expectancy has changed over the years. The countries receiving ACT have a particularly low age of life expectancy compared to the more developed countries across the world. ***An assumption that can be made in relation to this stat is that diseases like Malaria may affect the countries overall life expectancy***."
+
+ timeseries_plot_1 <- data_join %>%  
+  ggplot() +
+    aes(year, `Life expectancy at birth`, colour = `country`) +
+    geom_line(show.legend = FALSE)+
+   labs(
+     x = "Year", 
+     y = "Life expectancy",
+     title = "Evolution of life expectancy across the world",
+     colour = "country")+
+  theme_classic()+
+  theme(text = element_text(family = "serif"))
+
+ggplotly(timeseries_plot_1)
+```
+
+## Scatter plot
+
+```{r}
+#| fig-cap: "This visualisation of the scatter plot shows the relationship between the GDP per capita in US$ and the distribution of ACT.***It's clear to see from the scatter plot that there is effectively no correlation between them***. Many examples in the the scatter shows us that countries with GDP at the higher and lower levels can still have the same levels of ACT distribution "
+
+#scatter plot 2005-2024 Data filter
+filtered_data <- data_join %>%
+  filter(year >= 2005 & year <= 2024)
+
+
+#scatter plot filter 2005-2024 ACT countries
+countries_unicef <- unique(unicef_indicator_2$country)
+
+filtered_data_combined <- filtered_data %>%
+  filter(year >= 2005 & year <= 2024,
+         country %in% countries_unicef)
+ggplot(filtered_data_combined) +
+  aes(`GDP per capita (constant 2015 US$)`, `% of vaccinated children`, color = country, size = `Life expectancy at birth`) +
+  geom_point(alpha= 0.2)+
+  facet_wrap(~ year, nrow = 1)+
+  scale_x_continuous(
+    limits= c(0, 7500),
+    breaks = c(2500, 5000),
+    labels = scales::unit_format(unit = "K", scale = 0.001))+
+  labs(
+    x = "GDP per capita in US$", 
+    y = "% of children receivng ACT",
+    title = "Evolution of the relationship between GDP per capita and % of children receivng ACT"
+  )+
+  guides(color = "none" , size = "none")+
+  theme_classic()+
+  theme(text = element_text(family = "serif"))
+```
+
+## Bar chart
+
+```{r}
+#| fig-cap: "This visualisation of the bar chart gives us the ability to see the insight of the distribution of ACT between males and females and the total distribution over the years.***In developing countries where gender inequality is usually prevalent it is clear to see that this has no affect on the distribution of ACT***. It can be seen that both the male and female bars follow a very similar path."
+
+filtered_data_combined %>%
+   group_by(sex, year) %>%
+ summarise(m_mean_vaccination = mean(`% of vaccinated children`, na.rm = TRUE)) %>%
+  ggplot()+
+  aes(sex, m_mean_vaccination, fill = sex)+
+  geom_col() +
+  facet_wrap(~ year, nrow = 1)+
+labs(
+  x = "", 
+  y = "% of children receivng ACT",
+  title = "The comparison of males and females receiving ACT over the years", 
+  fill = "Sex")+
+  theme_classic()+
+  theme(text = element_text(family = "serif"),
+        axis.text.x = element_blank())+
+  scale_fill_manual(values = c("pink", "blue", "green"))
+
+```
+## Conclusion
+This display of visualisations gives us a helpful insight into the **evolution of the distribution of ACT to febrile children** across the world. It's obvious from the visualisations that these countries are *developing* in comparison to the rest of the world. Factors such as *GDP per capita* and *life expectancy* give us this insight. ACT distribution however does show to be *equal* in these countries between males and females suggesting that there is no preferential treatment to a specific gender.
+
+
+
+```
+
